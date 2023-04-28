@@ -36,6 +36,32 @@ class TestGameFunctions(unittest.TestCase):
         self.test_row_5 = np.array([2, 0, 0, 2])
         self.expected_result_combine_tiles_5 = np.array([4, 0, 0, 0])
 
+        self.test_board_gameover_1 = np.array([[16, 8, 4, 2], 
+                                               [2, 4, 16, 8], 
+                                               [512, 2, 8, 128], 
+                                               [2, 4, 16, 8]])
+        self.test_board_gameover_2 = np.array([[2, 4, 2, 4], 
+                                               [4, 2, 4, 2], 
+                                               [2, 4, 2, 4], 
+                                               [4, 2, 4, 2]])
+        self.test_board_not_gameover_1 = np.array([[2, 2, 2, 2], 
+                                                   [2, 2, 2, 2], 
+                                                   [2, 2, 2, 2], 
+                                                   [2, 2, 2, 2]])
+        self.test_board_not_gameover_2 = np.array([[16, 8, 4, 2], 
+                                                   [2, 4, 16, 8], 
+                                                   [512, 512, 8, 128], 
+                                                   [2, 4, 16, 8]])
+        self.test_board_not_gameover_3 = np.array([[16, 8, 4, 2], 
+                                                   [2, 4, 16, 8], 
+                                                   [512, 0, 8, 128], 
+                                                   [2, 4, 16, 8]])
+        
+        self.empty_board = np.array([[0, 0, 0, 0],
+                                     [0, 0, 0, 0],
+                                     [0, 0, 0, 0],
+                                     [0, 0, 0, 0]])
+
     def test_move_tiles(self):
         left_board = game.move_tiles(self.board.copy(), game.Direction.LEFT)
         self.assertTrue(np.array_equal(self.expected_result_move_left, left_board))
@@ -71,31 +97,25 @@ class TestGameFunctions(unittest.TestCase):
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_5, combined_tiles), 
                         f'{self.expected_result_combine_tiles_5} does not equal {combined_tiles}')
 
-    # def test_add_tile(self):
-    #     self.board = [[0, 0, 0, 0],
-    #                   [0, 0, 0, 0],
-    #                   [0, 0, 0, 0],
-    #                   [0, 0, 0, 0]]
+    def test_add_tile(self):
+        init_board = game.add_tile(self.empty_board)
+        self.assertTrue(any(val == 2 or val == 4 for row in init_board for val in row))
 
-    #     game.add_tile(self.board)
-    #     self.assertTrue(any(val == 2 or val == 4 for row in self.board for val in row))
+    def test_is_game_over(self):
+        game_over = game.is_game_over(self.test_board_gameover_1)
+        self.assertTrue(game_over)
 
-    # def test_is_game_over(self):
-    #     self.board = [[2, 4, 8, 16],
-    #                   [16, 8, 4, 2],
-    #                   [2, 4, 8, 16],
-    #                   [16, 8, 4, 2]]
+        game_over = game.is_game_over(self.test_board_not_gameover_1)
+        self.assertFalse(game_over)
 
-    #     game_over = game.is_game_over(self.board)
-    #     self.assertTrue(game_over)
+        game_over = game.is_game_over(self.test_board_gameover_2)
+        self.assertTrue(game_over)
 
-    #     self.board = [[2, 4, 8, 16],
-    #                   [16, 8, 4, 2],
-    #                   [2, 4, 8, 16],
-    #                   [0, 8, 4, 2]]
+        game_over = game.is_game_over(self.test_board_not_gameover_2)
+        self.assertFalse(game_over)
 
-    #     game_over = game.is_game_over(self.board)
-    #     self.assertFalse(game_over)
+        game_over = game.is_game_over(self.test_board_not_gameover_3)
+        self.assertFalse(game_over)
 
 if __name__ == '__main__':
     unittest.main()

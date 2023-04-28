@@ -81,6 +81,11 @@ if __name__ == '__main__':
 
     # Initialize the game board
     board = np.zeros((4, 4), dtype=int)
+    prev_board = np.zeros((4, 4), dtype=int)
+
+    # Start game with two random tiles on the board
+    board = add_tile(board)
+    board = add_tile(board)
 
     # Initialize Pygame
     pygame.init()
@@ -101,30 +106,33 @@ if __name__ == '__main__':
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     board = move_tiles(board, Direction.UP)
-                    board = add_tile(board)
                 elif event.key == pygame.K_DOWN:
                     board = move_tiles(board, Direction.DOWN)
-                    board = add_tile(board)
                 elif event.key == pygame.K_LEFT:
                     board = move_tiles(board, Direction.LEFT)
-                    board = add_tile(board)
                 elif event.key == pygame.K_RIGHT:
                     board = move_tiles(board, Direction.RIGHT)
+                    
+                if not np.array_equal(prev_board, board):
                     board = add_tile(board)
 
-        # Draw the board
-        window.fill(BACKGROUND_COLOR)
-        pygame.draw.rect(window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
-        for i in range(4):
-            for j in range(4):
-                x, y = BOARD_POS[0] + j * TILE_SIZE, BOARD_POS[1] + i * TILE_SIZE
-                value = board[i, j]
-                color = TILE_COLORS[value]
-                pygame.draw.rect(window, color, pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
-                if value > 0:
-                    text = font.render(str(value), True, TILE_FONT_COLOR)
-                    text_rect = text.get_rect(center=(x + TILE_SIZE / 2, y + TILE_SIZE / 2))
-                    window.blit(text, text_rect)
+        if not np.array_equal(prev_board, board):
+            # Redraw the board
+            window.fill(BACKGROUND_COLOR)
+            pygame.draw.rect(window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
+            for i in range(4):
+                for j in range(4):
+                    x, y = BOARD_POS[0] + j * TILE_SIZE, BOARD_POS[1] + i * TILE_SIZE
+                    value = board[i, j]
+                    color = TILE_COLORS[value]
+                    pygame.draw.rect(window, color, pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
+                    if value > 0:
+                        text = font.render(str(value), True, TILE_FONT_COLOR)
+                        text_rect = text.get_rect(center=(x + TILE_SIZE / 2, y + TILE_SIZE / 2))
+                        window.blit(text, text_rect)
+            
+            # Update the display
+            pygame.display.update()
 
         # Check if the game is over
         if is_game_over(board):
@@ -133,8 +141,10 @@ if __name__ == '__main__':
             pygame.draw.rect(window, GAME_OVER_COLOR, game_over_rect.inflate(20, 20))
             window.blit(game_over_text, game_over_rect)
 
-        # Update the display
-        pygame.display.update()
+            # Update the display
+            pygame.display.update()
+
+        prev_board = board.copy()
 
     # Quit Pygame
     pygame.quit()
