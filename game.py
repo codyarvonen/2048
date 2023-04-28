@@ -2,11 +2,6 @@ import pygame
 import numpy as np
 import enum
 
-class Direction(enum.Enum):
-    UP = 1
-    DOWN = 3
-    LEFT = 0
-    RIGHT = 2
 
 # Define the game constants
 WINDOW_SIZE = (400, 500)
@@ -33,6 +28,17 @@ BACKGROUND_COLOR = (187, 173, 160)
 GAME_OVER_COLOR = (255, 0, 0)
 GAME_OVER_FONT_SIZE = 48
 GAME_OVER_FONT_COLOR = (255, 255, 255)
+
+class Direction(enum.Enum):
+    UP = 1
+    DOWN = 3
+    LEFT = 0
+    RIGHT = 2
+
+class Game():
+    # Game class to refactor
+    def __init__(self):
+        pass
 
 
 # Define the game logic for combining tiles
