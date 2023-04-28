@@ -1,3 +1,5 @@
+import time
+from typing import Tuple
 import pygame
 import numpy as np
 import enum
@@ -37,6 +39,9 @@ class Direction(enum.Enum):
 
 
 class Game():
+
+    # TODO: add an initial board param
+
     # Initialize game parameters
     def __init__(self, board_size: int=4, visualize: bool=True, command_list: list[Direction]=None):
         self.board_size = board_size
@@ -50,26 +55,30 @@ class Game():
             assert command_list is not None, 'A list of commands must be provided for headless mode'
 
     # Define the game logic for combining tiles
-    def combine_tiles(self, arr: np.ndarray) -> np.ndarray:
+    def combine_tiles(self, arr: np.ndarray) -> Tuple[np.ndarray, int]:
+        score = 0
         arr = arr[arr != 0]
         for i in range(len(arr) - 1):
             if arr[i] == arr[i+1]:
                 arr[i] *= 2
+                score += arr[i]
                 arr[i+1] = 0
         arr = arr[arr != 0]
         arr = np.concatenate((arr, np.zeros(self.board_size - len(arr), dtype=int)))
-        return arr
+        return arr, score
 
     # Define the game logic for moving tiles
-    def move_tiles(self, board: np.ndarray, direction: Direction) -> np.ndarray:
+    def move_tiles(self, board: np.ndarray, direction: Direction) -> Tuple[np.ndarray, int]:
+        score = 0
         rotated_board = np.rot90(board, direction.value)
         for i in range(self.board_size):
             arr = rotated_board[i,:]
             arr = np.trim_zeros(arr)
-            arr = self.combine_tiles(arr)
+            arr, row_score = self.combine_tiles(arr)
+            score += row_score
             rotated_board[i,:] = arr
         new_board = np.rot90(rotated_board, -direction.value)
-        return new_board
+        return new_board, score
 
     # Define the game logic for adding a new tile to the board
     def add_tile(self, board: np.ndarray) -> np.ndarray:
@@ -78,6 +87,23 @@ class Game():
         x, y = indices[0][index], indices[1][index]
         board[x, y] = np.random.choice([2, 4], p=[0.9, 0.1])
         return board
+    
+    # Redraw the board
+    def update_screen(self, window: pygame.Surface, font: pygame.font, board: np.ndarray):
+        window.fill(BACKGROUND_COLOR)
+        pygame.draw.rect(window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                x, y = BOARD_POS[0] + j * self.tile_size, BOARD_POS[1] + i * self.tile_size
+                value = board[i, j]
+                color = TILE_COLORS[value]
+                pygame.draw.rect(window, color, pygame.Rect(x, y, self.tile_size, self.tile_size))
+                if value > 0:
+                    text = font.render(str(value), True, TILE_FONT_COLOR)
+                    text_rect = text.get_rect(center=(x + self.tile_size / 2, y + self.tile_size / 2))
+                    window.blit(text, text_rect)
+        # Update the display
+        pygame.display.update()
 
     # Define the game logic for checking if the game is over
     def is_game_over(self, board: np.ndarray) -> bool:
@@ -91,14 +117,20 @@ class Game():
             return True
         return False
     
+    # TODO: add functionality to save a game history (including the start val)
+
+    # TODO: verify that random is not pseudo random
+
+    # TODO: prepare game class for ML training
+    
     def run(self):
         # Initialize the game board
         board = np.zeros((self.board_size, self.board_size), dtype=int)
-        prev_board = np.zeros((self.board_size, self.board_size), dtype=int)
 
         # Start game with two random tiles on the board
         board = self.add_tile(board)
         board = self.add_tile(board)
+        prev_board = board.copy()
 
         if self.visualize:
             # Initialize Pygame
@@ -109,50 +141,45 @@ class Game():
             # Load the font
             font = pygame.font.SysFont('Arial', TILE_FONT_SIZE, bold=True)
 
+            self.update_screen(window, font, board)
+
+            if self.command_list is not None:
+                pygame.event.get()
+
         # Start the game loop
         game_over = False
         while not game_over:
-            if self.visualize:
+            score = 0
+            if self.command_list is not None:
+                # Take a step through command list
+                command = self.command_list.pop(0)
+                board, score = self.move_tiles(board, command)
+                game_over = len(self.command_list) == 0
+                if self.visualize:
+                    time.sleep(1)
+            else:
                 # Handle events
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         game_over = True
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_UP:
-                            board = self.move_tiles(board, Direction.UP)
+                            board, score = self.move_tiles(board, Direction.UP)
                         elif event.key == pygame.K_DOWN:
-                            board = self.move_tiles(board, Direction.DOWN)
+                            board, score = self.move_tiles(board, Direction.DOWN)
                         elif event.key == pygame.K_LEFT:
-                            board = self.move_tiles(board, Direction.LEFT)
+                            board, score = self.move_tiles(board, Direction.LEFT)
                         elif event.key == pygame.K_RIGHT:
-                            board = self.move_tiles(board, Direction.RIGHT)
-                            
-            else:
-                # Take a step through command list
-                command = self.command_list.pop(0)
-                board = self.move_tiles(board, command)
-                game_over = len(self.command_list) == 0
+                            board, score = self.move_tiles(board, Direction.RIGHT)
+
+            self.total_score += score
 
             if not np.array_equal(prev_board, board):
                 board = self.add_tile(board)
 
             if self.visualize and not np.array_equal(prev_board, board):
-                # Redraw the board
-                window.fill(BACKGROUND_COLOR)
-                pygame.draw.rect(window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
-                for i in range(self.board_size):
-                    for j in range(self.board_size):
-                        x, y = BOARD_POS[0] + j * self.tile_size, BOARD_POS[1] + i * self.tile_size
-                        value = board[i, j]
-                        color = TILE_COLORS[value]
-                        pygame.draw.rect(window, color, pygame.Rect(x, y, self.tile_size, self.tile_size))
-                        if value > 0:
-                            text = font.render(str(value), True, TILE_FONT_COLOR)
-                            text_rect = text.get_rect(center=(x + self.tile_size / 2, y + self.tile_size / 2))
-                            window.blit(text, text_rect)
+                self.update_screen(window, font, board)
                 
-                # Update the display
-                pygame.display.update()
 
             # Check if the game is over
             if self.is_game_over(board):
@@ -174,4 +201,5 @@ class Game():
             pygame.quit()
 
 if __name__ == '__main__':
+    # Game(command_list=[Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT]).run()    
     Game().run()    

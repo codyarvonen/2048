@@ -10,31 +10,41 @@ class TestGameFunctions(unittest.TestCase):
                                [2, 2, 2, 0], 
                                [0, 0, 0, 0], 
                                [0, 0, 0, 0]])
+        
+        self.left_score = 4
         self.expected_result_move_left = np.array([[2, 0, 0, 0], 
                                                    [4, 2, 0, 0], 
                                                    [0, 0, 0, 0], 
                                                    [0, 0, 0, 0]])
+        self.right_score = 4
         self.expected_result_move_right = np.array([[0, 0, 0, 2], 
                                                     [0, 0, 2, 4], 
                                                     [0, 0, 0, 0], 
                                                     [0, 0, 0, 0]])
+        self.up_score = 4
         self.expected_result_move_up = np.array([[4, 2, 2, 0], 
                                                  [0, 0, 0, 0], 
                                                  [0, 0, 0, 0], 
                                                  [0, 0, 0, 0]])
+        self.down_score = 4
         self.expected_result_move_down = np.array([[0, 0, 0, 0], 
                                                    [0, 0, 0, 0], 
                                                    [0, 0, 0, 0], 
                                                    [4, 2, 2, 0]])
         
+        self.test_score_1 = 4
         self.test_row_1 = np.array([2, 2, 2, 0])
         self.expected_result_combine_tiles_1 = np.array([4, 2, 0, 0])
+        self.test_score_2 = 8
         self.test_row_2 = np.array([2, 2, 2, 2])
         self.expected_result_combine_tiles_2 = np.array([4, 4, 0, 0])
+        self.test_score_3 = 4
         self.test_row_3 = np.array([0, 2, 2, 2])
         self.expected_result_combine_tiles_3 = np.array([4, 2, 0, 0])
+        self.test_score_4 = 4
         self.test_row_4 = np.array([2, 4, 2, 2])
         self.expected_result_combine_tiles_4 = np.array([2, 4, 4, 0])
+        self.test_score_5 = 4
         self.test_row_5 = np.array([2, 0, 0, 2])
         self.expected_result_combine_tiles_5 = np.array([4, 0, 0, 0])
 
@@ -65,39 +75,47 @@ class TestGameFunctions(unittest.TestCase):
                                      [0, 0, 0, 0]])
 
     def test_move_tiles(self):
-        left_board = self.test_game.move_tiles(self.board.copy(), game.Direction.LEFT)
+        left_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.LEFT)
         self.assertTrue(np.array_equal(self.expected_result_move_left, left_board))
+        self.assertEqual(self.left_score, score)
 
-        right_board = self.test_game.move_tiles(self.board.copy(), game.Direction.RIGHT)
+        right_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.RIGHT)
         self.assertTrue(np.array_equal(self.expected_result_move_right, right_board))
+        self.assertEqual(self.right_score, score)
 
-        up_board = self.test_game.move_tiles(self.board.copy(), game.Direction.UP)
+        up_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.UP)
         self.assertTrue(np.array_equal(self.expected_result_move_up, up_board))
+        self.assertEqual(self.up_score, score)
 
-        down_board = self.test_game.move_tiles(self.board.copy(), game.Direction.DOWN)
+        down_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.DOWN)
         self.assertTrue(np.array_equal(self.expected_result_move_down, down_board))
-
+        self.assertEqual(self.down_score, score)
 
     def test_combine_tiles(self):
-        combined_tiles = self.test_game.combine_tiles(self.test_row_1)
+        combined_tiles, score = self.test_game.combine_tiles(self.test_row_1)
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_1, combined_tiles), 
                         f'{self.expected_result_combine_tiles_1} does not equal {combined_tiles}')
+        self.assertEqual(self.test_score_1, score)
         
-        combined_tiles = self.test_game.combine_tiles(self.test_row_2)
+        combined_tiles, score = self.test_game.combine_tiles(self.test_row_2)
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_2, combined_tiles), 
                         f'{self.expected_result_combine_tiles_2} does not equal {combined_tiles}')
+        self.assertEqual(self.test_score_2, score)
         
-        combined_tiles = self.test_game.combine_tiles(self.test_row_3)
+        combined_tiles, score = self.test_game.combine_tiles(self.test_row_3)
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_3, combined_tiles), 
                         f'{self.expected_result_combine_tiles_3} does not equal {combined_tiles}')
+        self.assertEqual(self.test_score_3, score)
         
-        combined_tiles = self.test_game.combine_tiles(self.test_row_4)
+        combined_tiles, score = self.test_game.combine_tiles(self.test_row_4)
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_4, combined_tiles), 
                         f'{self.expected_result_combine_tiles_4} does not equal {combined_tiles}')
+        self.assertEqual(self.test_score_4, score)
         
-        combined_tiles = self.test_game.combine_tiles(self.test_row_5)
+        combined_tiles, score = self.test_game.combine_tiles(self.test_row_5)
         self.assertTrue(np.array_equal(self.expected_result_combine_tiles_5, combined_tiles), 
                         f'{self.expected_result_combine_tiles_5} does not equal {combined_tiles}')
+        self.assertEqual(self.test_score_5, score)
 
     def test_add_tile(self):
         init_board = self.test_game.add_tile(self.empty_board)
