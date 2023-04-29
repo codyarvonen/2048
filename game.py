@@ -96,6 +96,11 @@ class Game():
         return False
     
     # TODO: prepare game class for ML training
+
+    # TODO: abstract away a step function so that the ML model can process the game one step at a time.
+    #       along with that, make the run function just continuously call the step fuction.
+    #       the step function should take as a parameter a direction maybe.
+    #       update the test file when these changes are made
     
     def run(self):
         # Initialize history
