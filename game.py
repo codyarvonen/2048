@@ -1,58 +1,36 @@
+import pickle
 import time
 from typing import Tuple
 import pygame
 import numpy as np
-import enum
+from history import GameHistory
 
-
-# Define the game constants
-WINDOW_SIZE = (400, 500)
-BOARD_SIZE = (400, 400)
-BOARD_POS = (0, 100)
-TILE_FONT_SIZE = 32
-TILE_FONT_COLOR = (255, 255, 255)
-TILE_COLORS = {
-    0: (255, 255, 255),
-    2: (238, 228, 218),
-    4: (237, 224, 200),
-    8: (242, 177, 121),
-    16: (245, 149, 99),
-    32: (246, 124, 95),
-    64: (246, 94, 59),
-    128: (237, 207, 114),
-    256: (237, 204, 97),
-    512: (237, 200, 80),
-    1024: (237, 197, 63),
-    2048: (237, 194, 46),
-}
-BACKGROUND_COLOR = (187, 173, 160)
-GAME_OVER_COLOR = (255, 0, 0)
-GAME_OVER_FONT_SIZE = 48
-GAME_OVER_FONT_COLOR = (255, 255, 255)
-
-
-class Direction(enum.Enum):
-    UP = 1
-    DOWN = 3
-    LEFT = 0
-    RIGHT = 2
-
+from direction import Direction
+from constants import *
 
 class Game():
-
-    # TODO: add an initial board param
-
     # Initialize game parameters
-    def __init__(self, board_size: int=4, visualize: bool=True, command_list: list[Direction]=None):
+    def __init__(self, board_size: int=4, seed: int=None, initial_board: np.ndarray=None, visualize: bool=True, save_game: bool=False, command_list: list[Direction]=None):
         self.board_size = board_size
+        self.seed = seed
+        self.initial_board = initial_board
         self.tile_size = BOARD_SIZE[0] / board_size
         self.visualize = visualize
+        self.save_game = save_game
         self.command_list = command_list
-
         self.total_score = 0
+
+        if self.seed is not None:
+            np.random.seed(seed)
+
+        if initial_board is not None:
+            assert initial_board.shape == (board_size, board_size), 'Initial board size must have size (board_size, board_size)'
 
         if not visualize:
             assert command_list is not None, 'A list of commands must be provided for headless mode'
+
+        if save_game:
+            assert seed is not None, 'Must specify a random seed to save the game history'
 
     # Define the game logic for combining tiles
     def combine_tiles(self, arr: np.ndarray) -> Tuple[np.ndarray, int]:
@@ -117,19 +95,22 @@ class Game():
             return True
         return False
     
-    # TODO: add functionality to save a game history (including the start val)
-
-    # TODO: verify that random is not pseudo random
-
     # TODO: prepare game class for ML training
     
     def run(self):
-        # Initialize the game board
-        board = np.zeros((self.board_size, self.board_size), dtype=int)
+        # Initialize history
+        command_history = []
 
-        # Start game with two random tiles on the board
-        board = self.add_tile(board)
-        board = self.add_tile(board)
+        # Initialize the game board
+        if self.initial_board is None:
+            board = np.zeros((self.board_size, self.board_size), dtype=int)
+
+            # Start game with two random tiles on the board
+            board = self.add_tile(board)
+            board = self.add_tile(board)
+        else:
+            board = self.initial_board
+
         prev_board = board.copy()
 
         if self.visualize:
@@ -154,6 +135,7 @@ class Game():
                 # Take a step through command list
                 command = self.command_list.pop(0)
                 board, score = self.move_tiles(board, command)
+                command_history.append(command)
                 game_over = len(self.command_list) == 0
                 if self.visualize:
                     time.sleep(1)
@@ -165,12 +147,16 @@ class Game():
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_UP:
                             board, score = self.move_tiles(board, Direction.UP)
+                            command_history.append(Direction.UP)
                         elif event.key == pygame.K_DOWN:
                             board, score = self.move_tiles(board, Direction.DOWN)
+                            command_history.append(Direction.DOWN)
                         elif event.key == pygame.K_LEFT:
                             board, score = self.move_tiles(board, Direction.LEFT)
+                            command_history.append(Direction.LEFT)
                         elif event.key == pygame.K_RIGHT:
                             board, score = self.move_tiles(board, Direction.RIGHT)
+                            command_history.append(Direction.RIGHT)
 
             self.total_score += score
 
@@ -200,6 +186,19 @@ class Game():
             # Quit Pygame
             pygame.quit()
 
+        if self.save_game:
+            history = GameHistory(seed=self.seed, action_list=command_history)
+            with open(f'saved_games/game-{self.seed}.pkl', 'wb') as f:
+                pickle.dump(history, f)
+
+
+
 if __name__ == '__main__':
     # Game(command_list=[Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT]).run()    
+    # Game(seed=3, initial_board=np.array([[4, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 4]])).run()
+    # with open('saved_games/game-1.pkl', 'rb') as f:
+    #     game_history = pickle.load(f)
+    #     Game(seed=game_history.seed, command_list=game_history.action_list).run() 
+
     Game().run()    
+

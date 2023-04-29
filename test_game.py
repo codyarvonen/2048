@@ -1,4 +1,5 @@
 import unittest
+import direction
 import game
 import numpy as np
 
@@ -75,19 +76,19 @@ class TestGameFunctions(unittest.TestCase):
                                      [0, 0, 0, 0]])
 
     def test_move_tiles(self):
-        left_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.LEFT)
+        left_board, score = self.test_game.move_tiles(self.board.copy(), direction.Direction.LEFT)
         self.assertTrue(np.array_equal(self.expected_result_move_left, left_board))
         self.assertEqual(self.left_score, score)
 
-        right_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.RIGHT)
+        right_board, score = self.test_game.move_tiles(self.board.copy(), direction.Direction.RIGHT)
         self.assertTrue(np.array_equal(self.expected_result_move_right, right_board))
         self.assertEqual(self.right_score, score)
 
-        up_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.UP)
+        up_board, score = self.test_game.move_tiles(self.board.copy(), direction.Direction.UP)
         self.assertTrue(np.array_equal(self.expected_result_move_up, up_board))
         self.assertEqual(self.up_score, score)
 
-        down_board, score = self.test_game.move_tiles(self.board.copy(), game.Direction.DOWN)
+        down_board, score = self.test_game.move_tiles(self.board.copy(), direction.Direction.DOWN)
         self.assertTrue(np.array_equal(self.expected_result_move_down, down_board))
         self.assertEqual(self.down_score, score)
 
