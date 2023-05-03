@@ -158,7 +158,7 @@ class TestGameFunctions(unittest.TestCase):
             result = step_test_game.step(result[0], command)
 
         self.assertTrue(np.array_equal(result[0], self.test_board_after_steps))
-        self.assertEqual(result[1], self.test_step_score)
+        self.assertEqual(result[1].action_score, self.test_step_score)
         self.assertFalse(result[2])
 
 if __name__ == '__main__':

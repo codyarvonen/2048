@@ -4,7 +4,7 @@ from typing import Tuple
 import pygame
 import numpy as np
 from history import GameHistory
-
+from reward import ActionReward
 from direction import Direction
 from constants import *
 
@@ -106,7 +106,7 @@ class Game():
         self.font = pygame.font.SysFont('Arial', TILE_FONT_SIZE, bold=True)
 
 
-    def step(self, board: np.ndarray, command: Direction) -> Tuple[np.ndarray, int, bool]:
+    def step(self, board: np.ndarray, command: Direction) -> Tuple[np.ndarray, ActionReward, bool]:
 
         game_over = False
         current_board = board.copy()
@@ -120,8 +120,10 @@ class Game():
             new_board = collapsed_board
         else:
             new_board = self.add_tile(collapsed_board)
+
+        reward = ActionReward(score, current_board, new_board)
         
-        return new_board, score, game_over
+        return new_board, reward, game_over
 
     
     def run(self):
@@ -178,8 +180,8 @@ class Game():
                         command = Direction.RIGHT
             
             command_history.append(command)
-            board, score, board_complete = self.step(board, command)
-            self.total_score += score
+            board, reward, board_complete = self.step(board, command)
+            self.total_score += reward.action_score
             game_over = quit_game or board_complete
 
             if self.visualize and not np.array_equal(prev_board, board):
