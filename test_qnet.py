@@ -7,10 +7,19 @@ import unittest
 class TestGameFunctions(unittest.TestCase):
     def setUp(self):
         
-        self.test_encode_before = np.array([[0, 2, 4, 8], 
-                                            [16, 32, 64, 128], 
-                                            [256, 512, 1024, 2048], 
-                                            [4096, 8192, 16384, 32768]])
+        self.test_encode_before = np.array([[[0, 2, 4, 8], 
+                                             [16, 32, 64, 128], 
+                                             [256, 512, 1024, 2048], 
+                                             [4096, 8192, 16384, 32768]]])
+        
+        self.test_encode_batch_before = np.array([[[0, 2, 4, 8], 
+                                                  [16, 32, 64, 128], 
+                                                  [256, 512, 1024, 2048], 
+                                                  [4096, 8192, 16384, 32768]], 
+                                                  [[2, 2, 4, 8], 
+                                                  [16, 32, 64, 128], 
+                                                  [256, 512, 1024, 2048], 
+                                                  [4096, 8192, 16384, 32768]]])
         
         self.test_encode_after = torch.tensor([[[[1., 0., 0., 0.],
                 [0., 0., 0., 0.],
@@ -84,9 +93,16 @@ class TestGameFunctions(unittest.TestCase):
     #     self.assertTrue(torch.equal(self.test_encode_after, encoded_state))
 
     def test_forward(self):
+
+        print(self.test_encode_before.shape, self.test_encode_batch_before.shape)
+
         net = QNet(16, 4)
+        
         net.eval()
         net(self.test_encode_before)
+
+        net.eval()
+        net(self.test_encode_batch_before)
 
 
 
