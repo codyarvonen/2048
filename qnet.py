@@ -6,10 +6,12 @@ import torch.nn.functional as F
 
 
 class QNet(nn.Module):
-    def __init__(self, state_size, action_size, layer1_size=64, layer2_size=64, layer3_size = 64):
+    def __init__(self, state_size, action_size, layer1_size=1024, layer2_size=1024, layer3_size = 1024):
         super(QNet, self).__init__()
 
-        self.layer1 = nn.Linear(state_size, layer1_size)
+        # TODO: refactor the state size thing
+
+        self.layer1 = nn.Linear(state_size * 16, layer1_size)
         self.batch_norm1 = nn.BatchNorm1d(layer1_size)
         self.layer2 = nn.Linear(layer1_size, layer2_size)
         self.batch_norm2 = nn.BatchNorm1d(layer2_size)
@@ -21,15 +23,16 @@ class QNet(nn.Module):
         board_log2 = [0 if tile == 0 else int(math.log(tile, 2)) for tile in board.flatten()]
         board_log2_tensor = torch.LongTensor(board_log2)
         board_one_hot = F.one_hot(board_log2_tensor, num_classes=16).float().flatten()
-        board_encoded = board_one_hot.reshape(1, 4, 4, 16).permute(0, 3, 1, 2)
+        board_encoded = board_one_hot.float().unsqueeze(0)
+        # board_encoded = board_one_hot.reshape(1, 4, 4, 16).permute(0, 3, 1, 2)
+        # board_encoded = board_one_hot.reshape(1, 16, 16).permute(0, 2, 1)
         return board_encoded
 
     def forward(self, board: np.ndarray):
         state = self.encode_state(board)
-        layer1_output = nn.ReLU(self.batch_norm1(self.layer1(state)))
-        layer2_output = nn.ReLU(self.batch_norm1(self.layer1(layer1_output)))
-        layer3_output = nn.ReLU(self.batch_norm1(self.layer1(layer2_output)))
-        action_output = nn.ReLU(self.batch_norm1(self.layer1(layer3_output)))
+        layer1_output = F.relu(self.batch_norm1(self.layer1(state)))
+        layer2_output = F.relu(self.batch_norm2(self.layer2(layer1_output)))
+        layer3_output = F.relu(self.batch_norm3(self.layer3(layer2_output)))
+        action_output = F.relu(self.output_layer(layer3_output))
         return action_output
-    
     

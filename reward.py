@@ -1,5 +1,6 @@
+from typing import Tuple
 import numpy as np
-from game import Game
+# from game import Game
 from direction import Direction
 
 class ActionReward:
@@ -61,14 +62,39 @@ class ActionReward:
             
         proximity = 1 - (proximity / max_distance)
         return proximity
+    
+    # TODO: refactor these operations somehow
+    def combine_tiles(self, arr: np.ndarray) -> Tuple[np.ndarray, int]:
+        score = 0
+        arr = arr[arr != 0]
+        for i in range(len(arr) - 1):
+            if arr[i] == arr[i+1]:
+                arr[i] *= 2
+                score += arr[i]
+                arr[i+1] = 0
+        arr = arr[arr != 0]
+        arr = np.concatenate((arr, np.zeros(self.old_board.shape[0] - len(arr), dtype=int)))
+        return arr, score
+
+    def move_tiles(self, board: np.ndarray, direction: Direction) -> Tuple[np.ndarray, int]:
+        score = 0
+        rotated_board = np.rot90(board, direction.value)
+        for i in range(board.shape[0]):
+            arr = rotated_board[i,:]
+            arr = np.trim_zeros(arr)
+            arr, row_score = self.combine_tiles(arr)
+            score += row_score
+            rotated_board[i,:] = arr
+        new_board = np.rot90(rotated_board, -direction.value)
+        return new_board, score
 
     def get_availability_factor(self):
-        test_game = Game()
+        # test_game = Game()
         results = []
-        results.append(test_game.move_tiles(self.new_board, Direction.LEFT))
-        results.append(test_game.move_tiles(self.new_board, Direction.RIGHT))
-        results.append(test_game.move_tiles(self.new_board, Direction.UP))
-        results.append(test_game.move_tiles(self.new_board, Direction.DOWN))
+        results.append(self.move_tiles(self.new_board, Direction.LEFT))
+        results.append(self.move_tiles(self.new_board, Direction.RIGHT))
+        results.append(self.move_tiles(self.new_board, Direction.UP))
+        results.append(self.move_tiles(self.new_board, Direction.DOWN))
 
         available_directions = 0
         for result in results:
@@ -83,3 +109,10 @@ class ActionReward:
         else:
             return 1
     
+    def get_total_reward(self):
+        return (self.action_score * 
+                self.get_availability_factor() * 
+                self.get_capacity_factor() * 
+                self.get_invalid_move_factor() * 
+                self.get_proximity_factor() * 
+                self.get_largest_tile_score())

@@ -28,7 +28,8 @@ class Game():
 
         if not visualize:
             assert command_list is not None, 'A list of commands must be provided for headless mode'
-
+        
+        # TODO: save history when in iterative mode
         if save_game:
             assert seed is not None, 'Must specify a random seed to save the game history'
 

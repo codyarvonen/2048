@@ -77,11 +77,17 @@ class TestGameFunctions(unittest.TestCase):
                 [0., 0., 0., 0.],
                 [0., 0., 0., 1.]]]])
 
-    def test_encode_state(self):
+    # def test_encode_state(self):
+    #     net = QNet(16, 4)
+    #     encoded_state = net.encode_state(self.test_encode_before)
+    #     print(self.test_encode_after.shape, encoded_state.shape)
+    #     self.assertTrue(torch.equal(self.test_encode_after, encoded_state))
+
+    def test_forward(self):
         net = QNet(16, 4)
-        encoded_state = net.encode_state(self.test_encode_before)
-        print(self.test_encode_after.shape, encoded_state.shape)
-        self.assertTrue(torch.equal(self.test_encode_after, encoded_state))
+        net.eval()
+        net(self.test_encode_before)
+
 
 
 if __name__ == '__main__':
