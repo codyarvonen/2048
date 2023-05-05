@@ -10,7 +10,7 @@ from constants import *
 
 class Game():
     # Initialize game parameters
-    def __init__(self, board_size: int=4, seed: int=None, initial_board: np.ndarray=None, visualize: bool=True, save_game: bool=False, command_list: list[Direction]=None):
+    def __init__(self, board_size: int=4, seed: int=None, initial_board: np.ndarray=None, iterative_mode: bool=False, visualize: bool=True, save_game: bool=False, command_list: list[Direction]=None):
         self.board_size = board_size
         self.seed = seed
         self.initial_board = initial_board
@@ -26,13 +26,26 @@ class Game():
         if initial_board is not None:
             assert initial_board.shape == (board_size, board_size), 'Initial board size must have size (board_size, board_size)'
 
-        if not visualize:
+        if iterative_mode:
+            assert command_list is None, 'In iterative mode, no command list can be specified'
+            assert not visualize, 'In iterative mode, visualiztion is restricted'
+
+        if not visualize and not iterative_mode:
             assert command_list is not None, 'A list of commands must be provided for headless mode'
         
-        # TODO: save history when in iterative mode
         if save_game:
             assert seed is not None, 'Must specify a random seed to save the game history'
+            self.history = GameHistory(seed=seed, action_list=[])
 
+
+    def init_board(self) -> np.ndarray:
+        init_board = np.zeros((self.board_size, self.board_size), dtype=int)
+        # Start game with two random tiles on the board
+        init_board = self.add_tile(init_board)
+        init_board = self.add_tile(init_board)
+
+        return init_board
+    
     # Define the game logic for combining tiles
     def combine_tiles(self, arr: np.ndarray) -> Tuple[np.ndarray, int]:
         score = 0
@@ -106,12 +119,20 @@ class Game():
         # Load the font
         self.font = pygame.font.SysFont('Arial', TILE_FONT_SIZE, bold=True)
 
+    
+    def store_history(self, directory: str):
+        with open(f'{directory}/game-{self.seed}.pkl', 'wb') as f:
+            pickle.dump(self.history, f)
+
 
     def step(self, board: np.ndarray, command: Direction) -> Tuple[np.ndarray, ActionReward, bool]:
 
         game_over = False
         current_board = board.copy()
         collapsed_board, score = self.move_tiles(board, command)
+
+        if self.save_game:
+            self.history.add_action(command)
 
         # Check if the game is over
         if self.is_game_over(collapsed_board):
@@ -128,16 +149,10 @@ class Game():
 
     
     def run(self):
-        # Initialize history
-        command_history = []
-
         # Initialize the game board
         if self.initial_board is None:
-            board = np.zeros((self.board_size, self.board_size), dtype=int)
 
-            # Start game with two random tiles on the board
-            board = self.add_tile(board)
-            board = self.add_tile(board)
+            board = self.init_board()
         else:
             board = self.initial_board
 
@@ -180,7 +195,9 @@ class Game():
                     elif event.key == pygame.K_RIGHT:
                         command = Direction.RIGHT
             
-            command_history.append(command)
+            if self.save_game:
+                self.history.add_action(command)
+
             board, reward, board_complete = self.step(board, command)
             self.total_score += reward.action_score
             game_over = quit_game or board_complete
@@ -207,9 +224,8 @@ class Game():
             pygame.quit()
 
         if self.save_game:
-            history = GameHistory(seed=self.seed, action_list=command_history)
-            with open(f'saved_games/game-{self.seed}.pkl', 'wb') as f:
-                pickle.dump(history, f)
+            self.history.final_board = board
+            self.store_history('saved_games')
 
 
 
