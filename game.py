@@ -4,13 +4,13 @@ from typing import Tuple
 import pygame
 import numpy as np
 from history import GameHistory
-
+from reward import ActionReward
 from direction import Direction
 from constants import *
 
 class Game():
     # Initialize game parameters
-    def __init__(self, board_size: int=4, seed: int=None, initial_board: np.ndarray=None, visualize: bool=True, save_game: bool=False, command_list: list[Direction]=None):
+    def __init__(self, board_size: int=4, seed: int=None, initial_board: np.ndarray=None, iterative_mode: bool=False, visualize: bool=True, save_game: bool=False, command_list: list[Direction]=None):
         self.board_size = board_size
         self.seed = seed
         self.initial_board = initial_board
@@ -26,12 +26,26 @@ class Game():
         if initial_board is not None:
             assert initial_board.shape == (board_size, board_size), 'Initial board size must have size (board_size, board_size)'
 
-        if not visualize:
-            assert command_list is not None, 'A list of commands must be provided for headless mode'
+        if iterative_mode:
+            assert command_list is None, 'In iterative mode, no command list can be specified'
+            assert not visualize, 'In iterative mode, visualiztion is restricted'
 
+        if not visualize and not iterative_mode:
+            assert command_list is not None, 'A list of commands must be provided for headless mode'
+        
         if save_game:
             assert seed is not None, 'Must specify a random seed to save the game history'
+            self.history = GameHistory(seed=seed, action_list=[])
 
+
+    def init_board(self) -> np.ndarray:
+        init_board = np.zeros((self.board_size, self.board_size), dtype=int)
+        # Start game with two random tiles on the board
+        init_board = self.add_tile(init_board)
+        init_board = self.add_tile(init_board)
+
+        return init_board
+    
     # Define the game logic for combining tiles
     def combine_tiles(self, arr: np.ndarray) -> Tuple[np.ndarray, int]:
         score = 0
@@ -67,19 +81,19 @@ class Game():
         return board
     
     # Redraw the board
-    def update_screen(self, window: pygame.Surface, font: pygame.font, board: np.ndarray):
-        window.fill(BACKGROUND_COLOR)
-        pygame.draw.rect(window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
+    def update_screen(self, board: np.ndarray):
+        self.window.fill(BACKGROUND_COLOR)
+        pygame.draw.rect(self.window, TILE_COLORS[0], pygame.Rect(*BOARD_POS, *BOARD_SIZE))
         for i in range(self.board_size):
             for j in range(self.board_size):
                 x, y = BOARD_POS[0] + j * self.tile_size, BOARD_POS[1] + i * self.tile_size
                 value = board[i, j]
                 color = TILE_COLORS[value]
-                pygame.draw.rect(window, color, pygame.Rect(x, y, self.tile_size, self.tile_size))
+                pygame.draw.rect(self.window, color, pygame.Rect(x, y, self.tile_size, self.tile_size))
                 if value > 0:
-                    text = font.render(str(value), True, TILE_FONT_COLOR)
+                    text = self.font.render(str(value), True, TILE_FONT_COLOR)
                     text_rect = text.get_rect(center=(x + self.tile_size / 2, y + self.tile_size / 2))
-                    window.blit(text, text_rect)
+                    self.window.blit(text, text_rect)
         # Update the display
         pygame.display.update()
 
@@ -95,101 +109,123 @@ class Game():
             return True
         return False
     
-    # TODO: prepare game class for ML training
+    
+    def init_screen(self):
+        # Initialize Pygame
+        pygame.init()
+        self.window = pygame.display.set_mode(WINDOW_SIZE)
+        pygame.display.set_caption('2048')
+
+        # Load the font
+        self.font = pygame.font.SysFont('Arial', TILE_FONT_SIZE, bold=True)
+
+    
+    def store_history(self, directory: str):
+        with open(f'{directory}/game-{self.seed}.pkl', 'wb') as f:
+            pickle.dump(self.history, f)
+
+
+    def step(self, board: np.ndarray, command: Direction) -> Tuple[np.ndarray, ActionReward, bool]:
+
+        game_over = False
+        current_board = board.copy()
+        collapsed_board, score = self.move_tiles(board, command)
+
+        if self.save_game:
+            self.history.add_action(command)
+
+        # Check if the game is over
+        if self.is_game_over(collapsed_board):
+            game_over = True
+            new_board = collapsed_board
+        elif np.array_equal(current_board, collapsed_board):
+            new_board = collapsed_board
+        else:
+            new_board = self.add_tile(collapsed_board)
+
+        reward = ActionReward(score, current_board, new_board)
+        
+        return new_board, reward, game_over
+
     
     def run(self):
-        # Initialize history
-        command_history = []
-
         # Initialize the game board
         if self.initial_board is None:
-            board = np.zeros((self.board_size, self.board_size), dtype=int)
 
-            # Start game with two random tiles on the board
-            board = self.add_tile(board)
-            board = self.add_tile(board)
+            board = self.init_board()
         else:
             board = self.initial_board
 
         prev_board = board.copy()
 
         if self.visualize:
-            # Initialize Pygame
-            pygame.init()
-            window = pygame.display.set_mode(WINDOW_SIZE)
-            pygame.display.set_caption('2048')
+            self.init_screen()
 
-            # Load the font
-            font = pygame.font.SysFont('Arial', TILE_FONT_SIZE, bold=True)
-
-            self.update_screen(window, font, board)
+            self.update_screen(board)
 
             if self.command_list is not None:
                 pygame.event.get()
 
+        quit_game = False
+        board_complete = False
+        game_over = quit_game or board_complete
+        
         # Start the game loop
-        game_over = False
         while not game_over:
-            score = 0
             if self.command_list is not None:
                 # Take a step through command list
                 command = self.command_list.pop(0)
-                board, score = self.move_tiles(board, command)
-                command_history.append(command)
-                game_over = len(self.command_list) == 0
+                quit_game = len(self.command_list) == 0
                 if self.visualize:
-                    time.sleep(1)
+                    time.sleep(0.75)
             else:
                 # Handle events
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        game_over = True
-                    elif event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_UP:
-                            board, score = self.move_tiles(board, Direction.UP)
-                            command_history.append(Direction.UP)
-                        elif event.key == pygame.K_DOWN:
-                            board, score = self.move_tiles(board, Direction.DOWN)
-                            command_history.append(Direction.DOWN)
-                        elif event.key == pygame.K_LEFT:
-                            board, score = self.move_tiles(board, Direction.LEFT)
-                            command_history.append(Direction.LEFT)
-                        elif event.key == pygame.K_RIGHT:
-                            board, score = self.move_tiles(board, Direction.RIGHT)
-                            command_history.append(Direction.RIGHT)
+                event = pygame.event.wait()
+                while event.type not in [pygame.KEYDOWN, pygame.QUIT]:
+                    event = pygame.event.wait()
+                if event.type == pygame.QUIT:
+                    quit_game = True
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        command = Direction.UP
+                    elif event.key == pygame.K_DOWN:
+                        command = Direction.DOWN
+                    elif event.key == pygame.K_LEFT:
+                        command = Direction.LEFT
+                    elif event.key == pygame.K_RIGHT:
+                        command = Direction.RIGHT
+            
+            if self.save_game:
+                self.history.add_action(command)
 
-            self.total_score += score
-
-            if not np.array_equal(prev_board, board):
-                board = self.add_tile(board)
+            board, reward, board_complete = self.step(board, command)
+            self.total_score += reward.action_score
+            game_over = quit_game or board_complete
 
             if self.visualize and not np.array_equal(prev_board, board):
-                self.update_screen(window, font, board)
+                self.update_screen(board)
+
+            if game_over and self.visualize:
+                game_over_text = self.font.render('Game Over!', True, GAME_OVER_FONT_COLOR)
+                game_over_rect = game_over_text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2))
+                pygame.draw.rect(self.window, GAME_OVER_COLOR, game_over_rect.inflate(20, 20))
+                self.window.blit(game_over_text, game_over_rect)
+
+                # Update the display
+                pygame.display.update()
+
+                break
                 
-
-            # Check if the game is over
-            if self.is_game_over(board):
-                if self.visualize:
-                    game_over_text = font.render('Game Over!', True, GAME_OVER_FONT_COLOR)
-                    game_over_rect = game_over_text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2))
-                    pygame.draw.rect(window, GAME_OVER_COLOR, game_over_rect.inflate(20, 20))
-                    window.blit(game_over_text, game_over_rect)
-
-                    # Update the display
-                    pygame.display.update()
-                else:
-                    return
-
             prev_board = board.copy()
+
 
         if self.visualize:
             # Quit Pygame
             pygame.quit()
 
         if self.save_game:
-            history = GameHistory(seed=self.seed, action_list=command_history)
-            with open(f'saved_games/game-{self.seed}.pkl', 'wb') as f:
-                pickle.dump(history, f)
+            self.history.final_board = board
+            self.store_history('saved_games')
 
 
 
@@ -200,5 +236,9 @@ if __name__ == '__main__':
     #     game_history = pickle.load(f)
     #     Game(seed=game_history.seed, command_list=game_history.action_list).run() 
 
-    Game().run()    
+    Game().run()   
+    
+
+
+    
 

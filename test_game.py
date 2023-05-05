@@ -74,6 +74,18 @@ class TestGameFunctions(unittest.TestCase):
                                      [0, 0, 0, 0],
                                      [0, 0, 0, 0],
                                      [0, 0, 0, 0]])
+        
+        self.test_board_before_steps = np.array([[4, 0, 0, 0],
+                                                [0, 0, 0, 0],
+                                                [0, 0, 0, 0],
+                                                [0, 0, 0, 4]])
+        self.test_board_after_steps = np.array([[0, 0, 0, 2],
+                                               [0, 0, 0, 0],
+                                               [0, 0, 0, 2],
+                                               [0, 0, 0, 8]])
+        self.test_board_step_commands = [direction.Direction.DOWN, direction.Direction.RIGHT]
+        self.test_board_step_seed = 3
+        self.test_step_score = 8
 
     def test_move_tiles(self):
         left_board, score = self.test_game.move_tiles(self.board.copy(), direction.Direction.LEFT)
@@ -137,6 +149,17 @@ class TestGameFunctions(unittest.TestCase):
 
         game_over = self.test_game.is_game_over(self.test_board_not_gameover_3)
         self.assertFalse(game_over)
+
+    def test_step(self):
+        step_test_game = game.Game(seed=self.test_board_step_seed)
+
+        result = (self.test_board_before_steps, 0, False)
+        for command in self.test_board_step_commands:
+            result = step_test_game.step(result[0], command)
+
+        self.assertTrue(np.array_equal(result[0], self.test_board_after_steps))
+        self.assertEqual(result[1].action_score, self.test_step_score)
+        self.assertFalse(result[2])
 
 if __name__ == '__main__':
     unittest.main()
