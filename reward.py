@@ -12,8 +12,9 @@ class ActionReward:
     def get_largest_tile_score(self):
         if np.amax(self.new_board) > np.amax(self.old_board):
             return np.amax(self.new_board)
+            # return 2
         else:
-            return 0
+            return 1
 
     def get_capacity_factor(self):
         capacity_factor = np.count_nonzero(self.new_board) / np.size(self.new_board)
@@ -105,14 +106,31 @@ class ActionReward:
 
     def get_invalid_move_factor(self):
         if np.array_equal(self.new_board, self.old_board):
-            return 0
+            return -10
         else:
             return 1
+        
+    def future_merge_available(self, board) -> bool:
+        # Check rows
+        if (board[:, :-1] == board[:, 1:]).any():
+            return True
+        # Check columns
+        if (board[:-1, :] == board[1:, :]).any():
+            return True
+        # No adjacent numbers found
+        return False
     
     def get_total_reward(self):
+        invalid_factor = self.get_invalid_move_factor()
+        if invalid_factor == -10:
+            return invalid_factor
+        if self.action_score == 0 and self.future_merge_available(self.new_board):
+            return 1
         return (self.action_score * 
                 self.get_availability_factor() * 
                 self.get_capacity_factor() * 
-                self.get_invalid_move_factor() * 
-                self.get_proximity_factor() * 
+                invalid_factor * 
+                # self.get_proximity_factor() * 
                 self.get_largest_tile_score())
+    
+    # TODO: Add reward test functions!!!!
