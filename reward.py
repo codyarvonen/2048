@@ -131,21 +131,23 @@ class ActionReward:
         # No adjacent numbers found
         return False
 
-    def get_total_reward(self):
+    def get_total_reward(self, is_basic: bool):
         invalid_factor = self.get_invalid_move_factor()
         if invalid_factor == -10:
             return invalid_factor
-        else:
+
+        if is_basic:
             return self.action_score
-        if self.action_score == 0 and self.future_merge_available(self.new_board):
-            self.action_score = 1
-        return (
-            self.action_score
-            * self.get_availability_factor()
-            * self.get_capacity_factor()
-            * invalid_factor
-            * self.get_largest_tile_score()
-            # self.get_proximity_factor() *
-        )
+        else:
+            if self.action_score == 0 and self.future_merge_available(self.new_board):
+                self.action_score = 1
+            return (
+                self.action_score
+                * self.get_availability_factor()
+                * self.get_capacity_factor()
+                * invalid_factor
+                * self.get_largest_tile_score()
+                # self.get_proximity_factor() *
+            )
 
     # TODO: Add reward test functions!!!!
